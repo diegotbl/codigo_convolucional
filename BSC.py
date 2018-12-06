@@ -17,7 +17,9 @@ def transmissao(R, parametro):
 
 
 if __name__ == "__main__":
-    R = [[1, 0, 1], [1, 1, 1], [0, 0, 1]]
-    p = 0.3
+    #R = [[1, 0, 1], [1, 1, 1], [0, 0, 1]]
+    #p = 0.3
+    #print(R)
+    #print(transmissao(R, p))
+    R = 1/3
     print(R)
-    print(transmissao(R, p))

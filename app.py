@@ -4,6 +4,8 @@ from source.BSC import transmissao
 from source.trelica import criarTrelica
 from source.decodificador import decodificar
 from matplotlib import pyplot as plt
+from source.parametroCanalToEnergiaBit import converter
+from source.canalGaussiano import canalGauss
 
 def Gselector(m):
     if m == 3:
@@ -14,14 +16,20 @@ def Gselector(m):
         return [[1, 0, 0, 1, 1, 1, 1], [1, 0, 1, 0, 1, 1, 1], [1, 1, 0, 1, 1, 0, 1]]
 
 if __name__ == "__main__":
+    convolucionalNormal = False
+    convolucionalSemAproximacao = False
+    BPSK = False
+    cond = 2
     # Quantidade de memórias que serão testadas
-    memories = [3, 4, 6]
+    memories = [3]
+    # Taxa de transmissão
+    R = 1/3
     # Parâmetros do canal
-    p = [0.5, 0.2, 0.1, 0.05, 0.02, 0.01, 0.005, 0.002, 0.001, 0.0005, 0.0001, 0.00005, 0.00001]
-    # Probbabilidade tota de acerto para as memória
-    pAcerto = []
+    p = [0.5, 0, 4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01, 0.005, 0.002, 0.001, 0.0005, 0.0001, 0.00005, 0.00001]
+    # Energia por bit de informação/Potência do canal
+    ei_n0 = converter(p, R)
     # Número de bits de informação
-    nBits = 10000
+    nBits = 5000
     # Entrada
     u = []
     # Gerar entrada
@@ -31,8 +39,8 @@ if __name__ == "__main__":
         print("Simulando para a memória {}".format(m))
         # Polinômios geradores
         G = Gselector(m)
-        # Probabilidade de acerto com a correção para uma certa quantidade de memória
-        pAcertoM = []
+        # Probabilidade de acerto
+        pAcerto = []
         # Palavras código
         C = []
         # Palavras recebidas da transmissão
@@ -46,38 +54,51 @@ if __name__ == "__main__":
         for ele in u:
             V = [0, 0, 0]
             codificar(ele, G, M, V, mf)
-            C.append(V)
+            if cond == 2:
+                Vaux = []
+                for elemento in V:
+                    if elemento == 0:
+                        Vaux.append(-1)
+                    else:
+                        Vaux.append(1)
+                C.append(Vaux)
+            else:
+                C.append(V)
             M.clear()
             M.extend(mf)
             mf.clear()
-
         # Trelica desse sistema
-        trelica = criarTrelica(m, G)
-        for parameter in p:
-            T = transmissao(C, parameter)
-            resposta = decodificar(m, T, trelica)
-            count = 0
-            for i in range(len(resposta)):
-                if u[i] != resposta[i]:
-                    count = count + 1
-            pAcertoM.append(count / nBits)
-            print("Terminado para o parâmetro {}".format(parameter))
-        pAcerto.append(pAcertoM)
+        trelica = criarTrelica(m, G, cond)
+        # Transmissão
+        if cond != 2:
+            for parameter in p:
+                T = transmissao(C, parameter)
+                resposta = decodificar(m, T, trelica, cond, parameter)
+                count = 0
+                for i in range(len(resposta)):
+                    if u[i] != resposta[i]:
+                        count = count + 1
+                pAcerto.append(count / nBits)
+                print("Terminado para o parâmetro {}".format(parameter))
+            print(pAcerto)
+        else:
+            for e in ei_n0:
+                T = canalGauss(C, e, R)
+                resposta = decodificar(m, T, trelica, cond, e)
+                count = 0
+                for i in range(len(resposta)):
+                    if u[i] != resposta[i]:
+                        count = count + 1
+                pAcerto.append(count / nBits)
+                print("Terminado para o parâmetro {}".format(e))
+            print(pAcerto)
 
     # Plotar os resultados em um gráfico
     plt.loglog(p, p, linestyle="solid", label='Transmissão Direta')
-    k = 0
-    for pm in pAcerto:
-        if k == 0:
-            plt.loglog(p, pm, linestyle="solid", label='m = 3')
-        elif k == 1:
-            plt.loglog(p, pm, linestyle="solid", label='m = 4')
-        else:
-            plt.loglog(p, pm, linestyle="solid", label='m = 6')
-        k =k +1
+    plt.loglog(p, pAcerto, linestyle="solid", label='m = 3')
     plt.legend(loc = 'upper right')
-    plt.title("Probabilidade de erro x parâmetro do canal")
-    plt.xlabel("Parâmetro do canal BSC")
+    plt.title("Probabilidade de erro x Ei/No")
+    plt.xlabel("Ei/No")
     plt.xlim((0.5, 0))
     plt.ylabel("Probabilidade de erro")
     plt.show()

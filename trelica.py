@@ -1,7 +1,7 @@
 from source.codificador import codificar
 # Criação da treliça da máquina de estados
 
-def criarTrelica(m, G):
+def criarTrelica(m, G, cond):
     # m -> Quantidade de memórias
     # G -> Conjunto de polinômios geradores
     # treliça -> (M, u, V, MF)
@@ -23,7 +23,17 @@ def criarTrelica(m, G):
             mfaux = []
             V = [0, 0, 0]
             codificar(u, G, m, V, mfaux)
-            trelica.append((m, u, V, mfaux))
+            # Modifica ligeriamente a treliça para que os ramos estejam na modulação BPSK
+            if cond == 2:
+                Vaux = []
+                for elemento in V:
+                    if elemento == 0:
+                        Vaux.append(-1)
+                    else:
+                        Vaux.append(1)
+                trelica.append((m, u, Vaux, mfaux))
+            else:
+                trelica.append((m, u, V, mfaux))
     return trelica
 
 

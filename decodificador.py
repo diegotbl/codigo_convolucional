@@ -1,6 +1,6 @@
 from source.trelica import criarTrelica
 from source.codificador import codificar
-
+from math import log
 #Decodificador baseado no algortimo de Viterbi
 
 def estados(m):
@@ -10,7 +10,7 @@ def estados(m):
     elif m == 4:
         M = [[a, b, c, d] for a in alpha for b in alpha for c in alpha for d in alpha]
     else:
-        M = [[a, b, c, d, e] for a in alpha for b in alpha for c in alpha for d in alpha for e in alpha]
+        M = [[a, b, c, d, e, f] for a in alpha for b in alpha for c in alpha for d in alpha for e in alpha for f in alpha]
     return M
 
 # Função de custo
@@ -21,6 +21,20 @@ def DistanciaHamming(a, b):
             count = count + 1
     return count
 
+def DistanciaProbabilidade(a, b, parameter):
+    count = 0
+    tam = len(a)
+    for l in range(tam):
+        if a[l] != b[l]:
+            count = count +1
+    return -(count*log(parameter, 10) + (tam - count)*log(1 - parameter, 10))
+
+def DistanciaGauss(a, b):
+    answer = 0
+    for i in range(len(a)):
+        answer = answer + (a[i] - b[i]) ** 2
+    return answer
+
 def binToInt(elemento):
     count = 0
     tam = len(elemento)
@@ -29,7 +43,7 @@ def binToInt(elemento):
     return count
 
 
-def decodificar(m, T, trelica):
+def decodificar(m, T, trelica, cond, p):
     # m -> quantidade de memórias
     # T -> matriz de palavras código a serem decodificadas na forma (t3, t2, t1)
     # trelica -> trelica do algortimo usada para decodificação, mostrando todas as transições possíveis
@@ -49,11 +63,11 @@ def decodificar(m, T, trelica):
     for a in range(m):
         estadoInicial.append(0)
     estadosAcessados.append(estadoInicial)
+
     # Cada k marca uma palavra código que será decodificada
     for k in range(len(T)):
         # Guarda os novos trechos que serão adicionados ao caminho
         possibilidades = []
-
         # Isso é para garantir que só serão olhados os estados que já foram atingidos na busca
         for estado in estadosAcessados:
 
@@ -62,7 +76,12 @@ def decodificar(m, T, trelica):
                 if estado == elemento[0]:
                     palavra = elemento[2]
                     index = binToInt(estado)
-                    distancia = DistanciaHamming(T[k], palavra) + dicPeso[index]
+                    if cond == 0:
+                        distancia = DistanciaHamming(T[k], palavra) + dicPeso[index]
+                    elif cond == 1:
+                        distancia = DistanciaProbabilidade(T[k], palavra, p) + dicPeso[index]
+                    else:
+                        distancia = DistanciaGauss(T[k], palavra) + dicPeso[index]
                     # Analisa se vale a pena trocar o trecho atual cujo estadoFinal é elemento[3] por esse novo encontrado
                     existe = False
                     for possibilidade in possibilidades:
@@ -83,23 +102,18 @@ def decodificar(m, T, trelica):
             index = binToInt(possibilidade[2])
             dicPeso[index] = possibilidade[3]
             caminho.append(possibilidade)
-    #print(dicPeso)
     # Achar o menor peso final aculmulado
     menorPeso = -1
     for key in dicPeso.keys():
         if menorPeso < 0:
             menorPeso = dicPeso[key]
-        elif menorPeso > dicPeso[key]:
+        elif menorPeso > dicPeso[key] and cond == 0:
             menorPeso = dicPeso[key]
-    #print(menorPeso)
     # Escreve o caminho que foi percorrido e guardar a sequência de bits enviada
     k = len(T)-1
     u = []
     estadoAtual = []
     # Percorrer o caminho da decodificação
-    #for element in caminho:
-    #    if element[3] == 0:
-            #print(element)
     while k >= 0:
         if k == len(T)-1:
             for trecho in caminho:
